@@ -21,18 +21,25 @@
  ******************************************************************************/
 package services.combat;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
+
+import org.apache.mina.core.buffer.IoBuffer;
+
 import protocol.swg.ObjControllerMessage;
 import protocol.swg.objectControllerObjects.CombatAction;
+import protocol.swg.objectControllerObjects.CombatSpam;
 import protocol.swg.objectControllerObjects.CommandEnqueueRemove;
 import protocol.swg.objectControllerObjects.StartTask;
+import resources.common.FileUtilities;
 import resources.objects.creature.CreatureObject;
 import resources.objects.tangible.TangibleObject;
 import resources.objects.weapon.WeaponObject;
 import services.command.CombatCommand;
 import main.NGECore;
 import engine.resources.common.CRC;
+import engine.resources.objects.SWGObject;
 import engine.resources.service.INetworkDispatch;
 import engine.resources.service.INetworkRemoteEvent;
 
@@ -42,16 +49,7 @@ public class CombatService implements INetworkDispatch {
 
 	public CombatService(NGECore core) {
 		this.core = core;
-		core.commandService.registerCombatCommand("rangedshotrifle");
-		core.commandService.registerCombatCommand("rangedshotpistol");
-		core.commandService.registerCombatCommand("rangedshotlightrifle");
-		core.commandService.registerCombatCommand("rangedshot");
-		core.commandService.registerCombatCommand("meleehit");
-		core.commandService.registerCombatCommand("saberhit");
-		core.commandService.registerCombatCommand("fs_sweep_7");
-		core.commandService.registerCombatCommand("fs_dm_7");
-		core.commandService.registerCombatCommand("fs_dm_cc_6");
-		core.commandService.registerCombatCommand("fs_ae_dm_cc_6");
+		CombatCommands.registerCommands(core);
 	}
 
 	@Override
@@ -71,9 +69,13 @@ public class CombatService implements INetworkDispatch {
 		if(!applySpecialCost(attacker, weapon, command))
 			return;
 		
-		if(!attemptCombat(attacker, target))
+		if((command.getAttackType() == 0 || command.getAttackType() == 1 || command.getAttackType() == 3) && !attemptCombat(attacker, target))
 			return;
 
+		// use preRun for delayed effects like officer orbital strike, grenades etc.
+		if(FileUtilities.doesFileExist("scripts/commands/combat" + command.getCommandName() + ".py"))
+			core.scriptService.callScript("scripts/commands/combat", command.getCommandName(), "preRun", core, attacker, target, command);
+		
 		if(command.getAttackType() == 1)
 			doSingleTargetCombat(attacker, target, weapon, command, actionCounter);
 		else if(command.getAttackType() == 0 || command.getAttackType() == 2 || command.getAttackType() == 3)
@@ -98,6 +100,38 @@ public class CombatService implements INetworkDispatch {
 	}
 	
 	private void doAreaCombat(CreatureObject attacker, CreatureObject target, WeaponObject weapon, CombatCommand command, int actionCounter) {
+		
+		float x = attacker.getWorldPosition().x;
+		float z = attacker.getWorldPosition().z;
+		
+		float dirX = target.getWorldPosition().x - x;
+		float dirZ = target.getWorldPosition().z - z;
+		
+		float range = command.getConeLength();
+		
+		
+		List<SWGObject> inRangeObjects = core.simulationService.get(attacker.getPlanet(), target.getWorldPosition().x, target.getWorldPosition().z, (int) range);
+		
+		for(SWGObject obj : inRangeObjects) {
+			
+			if(!(obj instanceof TangibleObject) || obj == attacker)
+				continue;
+			
+			if(obj instanceof CreatureObject && (((CreatureObject) obj).getPosture() == 13 || ((CreatureObject) obj).getPosture() == 14))
+				continue;
+
+			if(command.getAttackType() == 0 && !isInConeAngle(attacker, obj, (int) command.getConeLength(), (int) command.getConeWidth(), dirX, dirZ))
+				continue;
+			
+			if(!core.simulationService.checkLineOfSight(target, obj))
+				continue;
+			
+			if(!attemptCombat(attacker, (TangibleObject) obj))
+				continue;
+			
+			doSingleTargetCombat(attacker, (TangibleObject) obj, weapon, command, actionCounter);
+			
+		}
 		
 	}
 
@@ -140,10 +174,12 @@ public class CombatService implements INetworkDispatch {
 			}
 			
 		}
+		int damageBeforeArmor = (int) damage;
 		damage *= (1 - getArmorReduction(attacker, target, weapon, command, hitType));
+		int armorAbsorbed = (int) (damageBeforeArmor - damage);
 		if(mitigationType == HitType.BLOCK) {
 				
-			float blockValue = (attacker.getSkillMod("strength_modified").getBase() * attacker.getSkillMod("combat_block_value").getBase()) / 2 + 25;
+			float blockValue = (attacker.getSkillMod("strength_modified").getBase() + attacker.getSkillMod("combat_block_value").getBase()) / 2 + 25;
 			damage -= blockValue;
 			
 		}
@@ -151,24 +187,39 @@ public class CombatService implements INetworkDispatch {
 		if(damage > 0)
 			applyDamage(attacker, target, (int) damage);
 		
-		sendCombatPackets(attacker, target, weapon, command, actionCounter);
+		sendCombatPackets(attacker, target, weapon, command, actionCounter, damage, armorAbsorbed, hitType);
+
+		if(FileUtilities.doesFileExist("scripts/commands/combat" + command.getCommandName() + ".py"))
+			core.scriptService.callScript("scripts/commands/combat", command.getCommandName(), "run", core, attacker, target, null);
 
 	}
 	
 
 
-	private void sendCombatPackets(CreatureObject attacker, CreatureObject target, WeaponObject weapon, CombatCommand command, int actionCounter) {
+	private void sendCombatPackets(CreatureObject attacker, CreatureObject target, WeaponObject weapon, CombatCommand command, int actionCounter, float damage, int armorAbsorbed, int hitType) {
 		
 		String animationStr = command.getRandomAnimation(weapon);
+		
 		CombatAction combatAction = new CombatAction(CRC.StringtoCRC(animationStr), attacker.getObjectID(), weapon.getObjectID(), target.getObjectID(), command.getCommandCRC());
 		ObjControllerMessage objController = new ObjControllerMessage(0x1B, combatAction);
 		attacker.notifyObserversInRange(objController, true, 125);
+		
 		StartTask startTask = new StartTask(actionCounter, attacker.getObjectID(), command.getCommandCRC());
 		ObjControllerMessage objController2 = new ObjControllerMessage(0x0B, startTask);
 		attacker.getClient().getSession().write(objController2.serialize());
+		
 		CommandEnqueueRemove commandRemove = new CommandEnqueueRemove(attacker.getObjectID(), actionCounter);
 		ObjControllerMessage objController3 = new ObjControllerMessage(0x0B, commandRemove);
 		attacker.getClient().getSession().write(objController3.serialize());
+		
+		CombatSpam combatSpam = new CombatSpam(attacker.getObjectID(), target.getObjectID(), weapon.getObjectID(), (int) damage, armorAbsorbed, hitType);
+		ObjControllerMessage objController4 = new ObjControllerMessage(0x1B, combatSpam);
+		IoBuffer spam = objController4.serialize();
+		attacker.getClient().getSession().write(spam);
+		
+		if(target.getClient() != null)
+			target.getClient().getSession().write(spam);
+
 
 	}
 
@@ -214,11 +265,14 @@ public class CombatService implements INetworkDispatch {
 		
 		if(hitType == HitType.STRIKETHROUGH) {
 			
-			float stMaxValue = attacker.getSkillMod("combat_strikethrough_value").getBase() / 2;
+			float stMaxValue = attacker.getSkillMod("combat_strikethrough_value").getBase() / 2 + attacker.getSkillMod("luck_modified").getBase() / 10;
+			if(stMaxValue > 99)
+				stMaxValue = 99;
 			float stMinValue = stMaxValue / 2;
 
 			float stValue = new Random().nextInt((int) (stMaxValue - stMinValue + 1)) + stMinValue;
 			stValue /= 100;
+			stValue = 1 - stValue;
 			mitigation *= stValue;
 		}
 		
@@ -470,7 +524,7 @@ public class CombatService implements INetworkDispatch {
 		
 	}
 	
-	private boolean isInConeAngle(CreatureObject attacker, CreatureObject target, int coneLength, int coneWidth, float directionX, float directionZ) {
+	private boolean isInConeAngle(CreatureObject attacker, SWGObject target, int coneLength, int coneWidth, float directionX, float directionZ) {
 		
 		float radius = coneWidth / 2;
 		float angle = (float) (2 * Math.atan(coneLength / radius));

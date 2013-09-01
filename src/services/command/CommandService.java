@@ -24,7 +24,6 @@ package services.command;
 import java.nio.ByteOrder;
 import java.util.Map;
 import java.util.Vector;
-
 import main.NGECore;
 
 import org.apache.mina.core.buffer.IoBuffer;
@@ -78,8 +77,10 @@ public class CommandService implements INetworkDispatch  {
 				
 				BaseSWGCommand command = getCommandByCRC(commandEnqueue.getCommandCRC());
 				
-				if(command == null)
+				if(command == null) {
+					//System.out.println("Unknown Command CRC: " + commandEnqueue.getCommandCRC());
 					return;
+				}
 				
 				// TODO: command filters for state, posture etc.
 				
@@ -87,13 +88,15 @@ public class CommandService implements INetworkDispatch  {
 					System.out.println("NULL Object");
 					return;
 				}
-				
+
 				CreatureObject actor = (CreatureObject) client.getParent();
 
 				SWGObject target = core.objectService.getObject(commandEnqueue.getTargetID());
 				
 				if(command instanceof CombatCommand) {
-					processCombatCommand(actor, target, (CombatCommand) command, commandEnqueue.getActionCounter());
+					CombatCommand command2 = (CombatCommand) command.clone();
+					core.scriptService.callScript("scripts/commands/combat", command.getCommandName(), "setup", core, actor, target, command2);
+					processCombatCommand(actor, target, command2, commandEnqueue.getActionCounter(), commandEnqueue.getCommandArguments());
 					return;
 				}
 					
@@ -109,18 +112,16 @@ public class CommandService implements INetworkDispatch  {
 	
 	public BaseSWGCommand registerCommand(String name) {
 		
-		BaseSWGCommand command = new BaseSWGCommand(name);
+		BaseSWGCommand command = new BaseSWGCommand(name.toLowerCase());
 		commandLookup.add(command);
-		
 		return command;
 		
 	}
 
 	public CombatCommand registerCombatCommand(String name) {
 		
-		CombatCommand command = new CombatCommand(name);
+		CombatCommand command = new CombatCommand(name.toLowerCase());
 		commandLookup.add(command);
-		
 		return command;
 		
 	}
@@ -137,12 +138,19 @@ public class CommandService implements INetworkDispatch  {
 
 	}
 	
-	private void processCombatCommand(CreatureObject attacker, SWGObject target, CombatCommand command, int actionCounter) {
+	private void processCombatCommand(CreatureObject attacker, SWGObject target, CombatCommand command, int actionCounter, String commandArgs) {
 		
 		boolean success = true;
 		
-		if(target == null || !(target instanceof TangibleObject) || target == attacker)
-			success = false;
+		if(!(command.getAttackType() == 0) && !(command.getAttackType() == 2) && !(command.getAttackType() == 3)) {
+			if(target == null || !(target instanceof TangibleObject) || target == attacker)
+				success = false;
+		} else {
+			if(target == null)
+				target = attacker;
+			else if(!(target instanceof TangibleObject))
+				return;
+		}
 		
 		if(attacker.getPosture() == 13 || attacker.getPosture() == 14)
 			success = false;
@@ -165,7 +173,7 @@ public class CommandService implements INetworkDispatch  {
 			maxRange = weapon.getMaxRange();
 		else
 			maxRange = command.getMaxRange();
-		
+				
 		Point3D attackerPos = attacker.getWorldPosition();
 		Point3D defenderPos = attacker.getWorldPosition();
 		
@@ -177,7 +185,8 @@ public class CommandService implements INetworkDispatch  {
 				success = false;
 		}
 		
-		if(!core.simulationService.checkLineOfSight(attacker, target)) {
+		
+		if(target != attacker && success && !core.simulationService.checkLineOfSight(attacker, target)) {
 			
 			ShowFlyText los = new ShowFlyText(attacker.getObjectID(), attacker.getObjectID(), "combat_effects", "cant_see", (float) 1.5, (float) 429664.031250);
 			ObjControllerMessage objController = new ObjControllerMessage(0x1B, los);

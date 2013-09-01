@@ -30,16 +30,20 @@ import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 
 
+
 import resources.common.RadialOptions;
 import resources.objects.creature.CreatureObject;
 import services.AttributeService;
 import services.BuffService;
 import services.CharacterService;
 import services.ConnectionService;
+import services.GroupService;
 import services.LoginService;
 import services.PlayerService;
 import services.ScriptService;
 import services.SimulationService;
+import services.SkillModService;
+import services.StaticService;
 import services.TerrainService;
 import services.chat.ChatService;
 import services.combat.CombatService;
@@ -62,6 +66,7 @@ import engine.clientdata.visitors.TerrainVisitor;
 import engine.clientdata.visitors.WorldSnapshotVisitor;
 import engine.clientdata.visitors.WorldSnapshotVisitor.SnapshotChunk;
 import engine.clients.Client;
+import engine.resources.common.CRC;
 import engine.resources.common.PHPBB3Auth;
 import engine.resources.config.Config;
 import engine.resources.config.DefaultConfig;
@@ -110,6 +115,9 @@ public class NGECore {
 	public CombatService combatService;
 	public PlayerService playerService;
 	public BuffService buffService;
+	public StaticService staticService;
+	public GroupService groupService;
+	public SkillModService skillModService;
 	
 	// Login Server
 	public NetworkDispatch loginDispatch;
@@ -123,7 +131,7 @@ public class NGECore {
 	private ObjectDatabase mailODB;
 	
 	public NGECore() {
-
+		
 	}
 	
 	public void start() {
@@ -132,7 +140,7 @@ public class NGECore {
 		if (!(config.loadConfigFile())) {
 			config = DefaultConfig.getConfig();
 		}
-		
+
 		// Database
 		databaseConnection = new DatabaseConnection();
 		databaseConnection.connect(config.getString("DB.URL"), config.getString("DB.NAME"), config.getString("DB.USER"), config.getString("DB.PASS"), "postgresql");
@@ -159,6 +167,9 @@ public class NGECore {
 		combatService = new CombatService(this);
 		playerService = new PlayerService(this);
 		buffService = new BuffService(this);
+		groupService = new GroupService(this);
+		skillModService = new SkillModService(this);
+		
 		// Ping Server
 		try {
 			PingServer pingServer = new PingServer(config.getInt("PING.PORT"));
@@ -201,9 +212,16 @@ public class NGECore {
 		terrainService.addPlanet(10, "dathomir", "terrain/dathomir.trn", true);
 		terrainService.loadSnapShotObjects();
 
+
+		
 		// Zone services that need to be loaded after the above
 		simulationService = new SimulationService(this);
 		zoneDispatch.addService(simulationService);
+		
+		// Static Spawns
+		staticService = new StaticService(this);
+		staticService.spawnStatics();
+		
 		
 		guildService = new GuildService(this);
 		zoneDispatch.addService(guildService);
@@ -217,7 +235,7 @@ public class NGECore {
 		didServerCrash = false;
 		System.out.println("Started Server.");
 		setGalaxyStatus(2);
-
+		
 	}
 	
 
@@ -352,6 +370,10 @@ public class NGECore {
 		clients.remove(connectionID);
 	}
 	
+	// for python scripts
+	public Thread getCurrentThread() {
+		return Thread.currentThread();
+	}
 	
 }
 

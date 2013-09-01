@@ -205,6 +205,34 @@ public class CreatureObject extends TangibleObject implements IPersistent {
 			this.skillsUpdateCounter = skillsUpdateCounter;
 		}
 	}
+	
+	public void addSkill(String skill) {
+		
+		if(skills.contains(skill))
+			return;
+		
+		skills.add(skill);
+		
+		if(getClient() != null) {
+			setSkillsUpdateCounter((short) (getSkillsUpdateCounter() + 1));
+			getClient().getSession().write(messageBuilder.buildAddSkillDelta(skill));
+		}
+
+	}
+	
+	public void removeSkill(String skill) {
+		
+		if(!skills.contains(skill))
+			return;
+		
+		skills.remove(skill);
+		
+		if(getClient() != null) {
+			setSkillsUpdateCounter((short) (getSkillsUpdateCounter() + 1));
+			getClient().getSession().write(messageBuilder.buildRemoveSkillDelta(skill));
+		}
+		
+	}
 
 	@Override
 	public void setOptionsBitmask(int optionBitmask) {
@@ -362,11 +390,53 @@ public class CreatureObject extends TangibleObject implements IPersistent {
 	}
 	
 	public void addSkillMod(String name, int base) {
-		SkillMod skillMod = new SkillMod();
-		skillMod.setBase(base);
-		skillMod.setSkillModString(name);
-		skillMod.setModifier(0);
-		skillMods.add(skillMod);
+		
+		if(getSkillMod(name) == null) {
+			SkillMod skillMod = new SkillMod();
+			skillMod.setBase(base);
+			skillMod.setSkillModString(name);
+			skillMod.setModifier(0);
+			skillMods.add(skillMod);
+		} else {
+			SkillMod mod = getSkillMod(name);
+			mod.setBase(mod.getBase() + base);
+			if(getClient() != null) {
+				setSkillModsUpdateCounter((short) (getSkillModsUpdateCounter() + 1));
+				getClient().getSession().write(messageBuilder.buildAddSkillModDelta(name, mod.getBase()));
+			}
+		}
+		
+	}
+	
+	public void deductSkillMod(String name, int base) {
+		
+		if(getSkillMod(name) == null)
+			return;
+		
+		SkillMod mod = getSkillMod(name);
+		mod.setBase(mod.getBase() - base);
+		
+		if(mod.getBase() <= 0) {
+			removeSkillMod(mod);
+		} else {
+			if(getClient() != null) {
+				setSkillModsUpdateCounter((short) (getSkillModsUpdateCounter() + 1));
+				getClient().getSession().write(messageBuilder.buildAddSkillModDelta(name, mod.getBase()));
+			}
+		}
+		
+	}
+
+	public void removeSkillMod(SkillMod mod) {
+		
+		skillMods.remove(mod);
+		
+		if(getClient() != null) {
+			setSkillModsUpdateCounter((short) (getSkillModsUpdateCounter() + 1));
+			getClient().getSession().write(messageBuilder.buildRemoveSkillModDelta(mod.getSkillModString(), mod.getBase()));
+		}
+
+		
 	}
 
 	public short getSkillModsUpdateCounter() {
@@ -514,9 +584,35 @@ public class CreatureObject extends TangibleObject implements IPersistent {
 		}
 	}
 	
+	
 	public void addAbility(String abilityName) {
+		
+		if(abilities.contains(abilityName))
+			return;
+		
 		abilities.add(abilityName);
+		
+		if(getClient() != null) {
+			setAbilitiesUpdateCounter((short) (getAbilitiesUpdateCounter() + 1));
+			getClient().getSession().write(messageBuilder.buildAddAbilityDelta(abilityName));
+		}
+
 	}
+	
+	public void removeAbility(String abilityName) {
+		
+		if(!abilities.contains(abilityName))
+			return;
+		
+		abilities.remove(abilityName);
+		
+		if(getClient() != null) {
+			setAbilitiesUpdateCounter((short) (getAbilitiesUpdateCounter() + 1));
+			getClient().getSession().write(messageBuilder.buildRemoveAbilityDelta(abilityName));
+		}
+		
+	}
+
 
 	public SWGList<MissionCriticalObject> getMissionCriticalObjects() {
 		return missionCriticalObjects;
