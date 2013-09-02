@@ -33,12 +33,25 @@ def removeExpertisePoint(core, actor):
 # this checks what abilities the player gets by level, need to also call this on level-up
 def addAbilities(core, actor, player):
 	
-	actor.addAbility('me_reckless_stimulation_1')
-	actor.addAbility('me_reckless_stimulation_2')
-	actor.addAbility('me_reckless_stimulation_3')
-	actor.addAbility('me_reckless_stimulation_4')
-	actor.addAbility('me_reckless_stimulation_5')
-	actor.addAbility('me_reckless_stimulation_6')
+	level = actor.getLevel()
+	
+	if level >=18:
+		actor.addAbility('me_reckless_stimulation_1')
+		
+	if level >=30:
+		actor.addAbility('me_reckless_stimulation_2')
+		
+	if level >=42:
+		actor.addAbility('me_reckless_stimulation_3')
+		
+	if level >=58:
+		actor.addAbility('me_reckless_stimulation_4')
+		
+	if level >=74:
+		actor.addAbility('me_reckless_stimulation_5')
+	
+	if level >=86:
+		actor.addAbility('me_reckless_stimulation_6')
 	
 	return
 	

@@ -7,12 +7,12 @@ def addExpertisePoint(core, actor):
 	if not player:
 		return
 		
-	if not player.getProfession() == 'medic_1a':
+	if not player.getProfession() == 'entertainer_1a':
 		return
 		
-	actor.addSkill('expertise_me_precision_4')
+	actor.addSkill('expertise_en_inspired_fitness_3')
 	
-	actor.addSkillMod('precision_modified', 25)
+	actor.addSkillMod('expertise_en_inspire_attrib_increase', 50)
 
 	
 	addAbilities(core, actor, player)
@@ -26,12 +26,12 @@ def removeExpertisePoint(core, actor):
 	if not player:
 		return
 		
-	if not player.getProfession() == 'medic_1a':
+	if not player.getProfession() == 'entertainer_1a':
 		return
 		
-	actor.removeSkill('expertise_me_precision_4')
+	actor.removeSkill('expertise_en_inspired_fitness_3')
 		
-	actor.removeSkillMod('precision_modified', 25)
+	actor.removeSkillMod('expertise_en_inspire_attrib_increase', 50)
 	
 	removeAbilities(core, actor, player)
 

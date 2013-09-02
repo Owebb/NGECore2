@@ -12,7 +12,7 @@ def addExpertisePoint(core, actor):
 		
 	actor.addSkill('expertise_me_precision_1')
 	
-	actor.addSkillMod('precision_modified', 10)
+	actor.addSkillMod('precision_modified', 25)
 
 	
 	addAbilities(core, actor, player)
@@ -31,7 +31,7 @@ def removeExpertisePoint(core, actor):
 		
 	actor.removeSkill('expertise_me_precision_1')
 		
-	actor.removeSkillMod('precision_modified', 10)
+	actor.removeSkillMod('precision_modified', 25)
 	
 	removeAbilities(core, actor, player)
 

@@ -12,12 +12,12 @@ def addExpertisePoint(core, actor):
 		
 	actor.addSkill('expertise_me_energy_armor_1')
 	
-	actor.addSkillMod('energy', 150)
-	actor.addSkillMod('kinetic', 75)
-	actor.addSkillMod('acid', 75)
-	actor.addSkillMod('heat', 75)
-	actor.addSkillMod('cold', 75)
-	actor.addSkillMod('electricity', 75)
+	actor.addSkillMod('kinetic', 225)
+	actor.addSkillMod('energy', 225)
+	actor.addSkillMod('acid', 225)
+	actor.addSkillMod('heat', 225)
+	actor.addSkillMod('cold', 225)
+	actor.addSkillMod('electricity', 225)
 	
 	addAbilities(core, actor, player)
 
@@ -35,12 +35,12 @@ def removeExpertisePoint(core, actor):
 		
 	actor.removeSkill('expertise_me_energy_armor_1')
 		
-	actor.removeSkillMod('energy', 150)
-	actor.removeSkillMod('kinetic', 75)
-	actor.removeSkillMod('acid', 75)
-	actor.removeSkillMod('heat', 75)
-	actor.removeSkillMod('cold', 75)
-	actor.removeSkillMod('electricity', 75)
+	actor.removeSkillMod('kinetic', 225)
+	actor.removeSkillMod('energy', 225)
+	actor.removeSkillMod('acid', 225)
+	actor.removeSkillMod('heat', 225)
+	actor.removeSkillMod('cold', 225)
+	actor.removeSkillMod('electricity', 225)
 	
 	removeAbilities(core, actor, player)
 

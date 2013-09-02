@@ -12,7 +12,7 @@ def addExpertisePoint(core, actor):
 		
 	actor.addSkill('expertise_me_strength_2')
 	
-	actor.addSkillMod('strength_modified', 10)
+	actor.addSkillMod('strength_modified', 25)
 
 	
 	addAbilities(core, actor, player)
@@ -31,7 +31,7 @@ def removeExpertisePoint(core, actor):
 		
 	actor.removeSkill('expertise_me_strength_2')
 		
-	actor.removeSkillMod('strength_modified', 10)
+	actor.removeSkillMod('strength_modified', 25)
 	
 	removeAbilities(core, actor, player)
 

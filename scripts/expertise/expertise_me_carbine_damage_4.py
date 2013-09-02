@@ -31,7 +31,7 @@ def removeExpertisePoint(core, actor):
 		
 	actor.removeSkill('expertise_me_carbine_damage_4')
 		
-	actor.removeSkillMod('expertise_damage_weapon_6', 3)
+	actor.removeSkillMod('expertise_damage_weapon_1', 3)
 	
 	removeAbilities(core, actor, player)
 

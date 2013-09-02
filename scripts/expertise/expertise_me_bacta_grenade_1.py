@@ -33,11 +33,22 @@ def removeExpertisePoint(core, actor):
 # this checks what abilities the player gets by level, need to also call this on level-up
 def addAbilities(core, actor, player):
 	
-	actor.addAbility('me_bacta_grenade_1')
-	actor.addAbility('me_bacta_grenade_2')
-	actor.addAbility('me_bacta_grenade_3')
-	actor.addAbility('me_bacta_grenade_4')
-	actor.addAbility('me_bacta_grenade_5')
+	level = actor.getLevel()
+	
+	if level >=24:
+		actor.addAbility('me_bacta_grenade_1')
+		
+	if level >=36:
+		actor.addAbility('me_bacta_grenade_2')
+		
+	if level >=48:
+		actor.addAbility('me_bacta_grenade_3')
+		
+	if level >=66:
+		actor.addAbility('me_bacta_grenade_4')
+		
+	if level >=84:
+		actor.addAbility('me_bacta_grenade_5')
 	
 	return
 	
